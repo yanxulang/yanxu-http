@@ -1,0 +1,56 @@
+引「../src/言序HTTP.yx」为 HTTP；
+引「标准:测试」为 测试；
+引「标准:字节」为 字节；
+引「标准:文字」为 文字；
+
+法 含片（原文：文，片：文）：理 则
+    归 长度（文字.分割（原文，片））大于 1；
+终
+
+定 首部：文 为「POST /search?q=%E8%A8%80%E5%BA%8F&q=web HTTP/1.1\r\nHost: localhost\r\nContent-Length: 6\r\nCookie: sid=abc; theme=dark\r\nX-Trace: one:two」；
+定 请求 为 HTTP.解析请求（首部，字节.从文字（「正文」））；
+测试.相等（请求.方法，「POST」）；
+测试.相等（请求.路径，「/search」）；
+测试.相等（请求.查询值（「q」），「言序」）；
+测试.相等（长度（请求.查询全部（「q」）），2）；
+测试.相等（请求.查询全部（「q」）【1】，「web」）；
+测试.相等（请求.Cookie值（「theme」），「dark」）；
+测试.相等（请求.首部值（「X-TRACE」），「one:two」）；
+测试.相等（请求.正文文字（），「正文」）；
+
+令 已拒绝短正文：理 为 假；
+试 则
+    HTTP.解析请求（首部，字节.从文字（「短」））；
+救 所误 则
+    置 已拒绝短正文 为 真；
+终
+测试.断言（已拒绝短正文，「Content-Length 不一致必须失败」）；
+
+令 已拒绝分块：理 为 假；
+试 则
+    HTTP.解析请求头（「POST / HTTP/1.1\r\nHost: localhost\r\nTransfer-Encoding: chunked」）；
+救 所误 则
+    置 已拒绝分块 为 真；
+终
+测试.断言（已拒绝分块，「0.1 必须显式拒绝请求分块传输」）；
+
+令 已拒绝首部注入：理 为 假；
+试 则
+    HTTP.文字响应（「好」）.设首部（「x-test」，「善\r\nEvil: yes」）；
+救 所误 则
+    置 已拒绝首部注入 为 真；
+终
+测试.断言（已拒绝首部注入，「响应首部注入必须失败」）；
+
+定 响应 为 HTTP.HTML响应（「<h1>言序</h1>」）；
+响应.设首部（「x-powered-by」，「yanxu-http」）；
+响应.添Cookie（HTTP.Cookie（「sid」，「abc123」）.设安全（真））；
+定 响应文：文 为 字节.转文字（响应.编码（））；
+测试.断言（文字.始于（响应文，「HTTP/1.1 200 OK\r\n」），「响应须含状态行」）；
+测试.断言（含片（响应文，「content-length: 15\r\n」），「Content-Length 须按 UTF-8 字节计算」）；
+测试.断言（含片（响应文，「connection: close\r\n」），「响应须关闭连接」）；
+测试.断言（含片（响应文，「set-cookie: sid=abc123; Path=/; Secure; HttpOnly; SameSite=Lax」），「Cookie 属性须完整」）；
+
+定 JSON文：文 为 字节.转文字（HTTP.JSON响应（{「ok」：真}）.正文）；
+测试.相等（JSON文，「{\"ok\":true}」）；
+测试.相等（HTTP.言据响应（「据【「ok\」：真】」）.首部值（「content-type」），「application/vnd.yanxu.yanju; charset=utf-8」）；
