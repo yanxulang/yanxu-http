@@ -11,12 +11,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Build Yanxu 1.1.4
-        run: |
-          git clone --depth 1 --branch v1.1.4 https://github.com/YanXuLang/yanxu.git .yanxu
-          cargo build --manifest-path .yanxu/Cargo.toml --locked
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: YanXuLang/yanxu
+          path: .yanxu
+          ref: 746490ad6e6875fe82451a0f1ed1b0fc00cb8a26 # yanxu 1.1.5
+      - name: Build Yanxu 1.1.5
+        run: cargo build --manifest-path .yanxu/Cargo.toml --locked --bin yanxu
       - name: Check and test
         run: |
           .yanxu/target/debug/yanxu 查 src/言序HTTP.yx
           .yanxu/target/debug/yanxu 试 tests --json
+          .yanxu/target/debug/yanxu compile . -o "$RUNNER_TEMP/yanxu-http.yxb"

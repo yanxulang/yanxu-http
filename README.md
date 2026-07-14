@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/yanxulang/yanxu-http/actions/workflows/ci.yml/badge.svg)](https://github.com/yanxulang/yanxu-http/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Yanxu 1.1.4-A](https://img.shields.io/badge/言序-1.1.4--A-b33.svg)](https://github.com/yanxulang/yanxu/releases/tag/v1.1.4-A)
+[![Yanxu 1.1.5](https://img.shields.io/badge/言序-1.1.5-b33.svg)](https://github.com/yanxulang/yanxu)
 
 `yanxu-http` 是言序的 HTTP/1.1 服务端协议基础库。它负责把 TCP 字节转换为有边界的请求对象，再把状态、首部、Cookie 和正文编码为响应；路由、模板和应用生命周期留给上层库。
 
@@ -23,10 +23,10 @@
 使用官方包管理器[言包](https://github.com/yanxulang/yanbao)添加并锁定 Git 依赖：
 
 ```sh
-yanbao --manifest-path . add yanxu-http \
+yanbao add yanxu-http --manifest-path . \
   --git https://github.com/yanxulang/yanxu-http.git \
   --rev main --version '^0.1'
-yanbao --manifest-path . install
+yanbao install --manifest-path .
 ```
 
 `言序.lock`固定精确提交和内容校验；项目不需要维护 submodule。
@@ -101,6 +101,6 @@ yanxu-language-new/target/debug/yanxu 执 yanxu-http/examples/解析请求.yx
 
 ## 演进方向
 
-当前版本是 `0.1.0`。计划按独立里程碑逐步加入请求分块传输、持久连接复用、Multipart 文件上传、WebSocket、HTTP/2 和 HTTP/3；每项能力都需要在解析预算、超时、背压和安全测试完成后才会进入稳定接口。详见[Web 栈安全与路线图](https://docs.yanxu.dev/web/security-roadmap/)。
+当前版本是 `0.1.1`。计划按独立里程碑逐步加入请求分块传输、持久连接复用、Multipart 文件上传、WebSocket、HTTP/2 和 HTTP/3；每项能力都需要在解析预算、超时、背压和安全测试完成后才会进入稳定接口。详见[Web 栈安全与路线图](https://docs.yanxu.dev/web/security-roadmap/)。
 
 按 [MIT License](LICENSE) 发布。

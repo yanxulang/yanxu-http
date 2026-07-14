@@ -5,10 +5,10 @@
 ## 1. 添加依赖
 
 ```sh
-yanbao --manifest-path . add yanxu-http \
+yanbao add yanxu-http --manifest-path . \
   --git https://github.com/yanxulang/yanxu-http.git \
   --rev main --version '^0.1'
-yanbao --manifest-path . install
+yanbao install --manifest-path .
 ```
 
 言包负责下载 Git 源码并在`言序.lock`固定精确提交；重新选择远端版本时使用`yanbao update`，无需 submodule。
