@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/yanxulang/yanxu-http/actions/workflows/ci.yml/badge.svg)](https://github.com/yanxulang/yanxu-http/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Yanxu main](https://img.shields.io/badge/言序-main-b33.svg)](https://github.com/yanxulang/yanxu)
+[![Yanxu 1.1.4-A](https://img.shields.io/badge/言序-1.1.4--A-b33.svg)](https://github.com/yanxulang/yanxu/releases/tag/v1.1.4-A)
 
 `yanxu-http` 是言序的 HTTP/1.1 服务端协议基础库。它负责把 TCP 字节转换为有边界的请求对象，再把状态、首部、Cookie 和正文编码为响应；路由、模板和应用生命周期留给上层库。
 
