@@ -5,10 +5,8 @@
 ## 1. 添加依赖
 
 ```sh
-yanbao add yanxu-http --manifest-path . \
-  --git https://github.com/yanxulang/yanxu-http.git \
-  --rev main --version '^0.1'
-yanbao install --manifest-path .
+yanbao add http --version '^0.1'
+yanbao install
 ```
 
 言包负责下载 Git 源码并在`言序.lock`固定精确提交；重新选择远端版本时使用`yanbao update`，无需 submodule。
@@ -25,7 +23,7 @@ TCP监听 = ["127.0.0.1", "::1", "localhost"]
 `解析请求头`接收不包含末尾空行的首部文字，适合无正文请求：
 
 ```yanxu
-引「包:yanxu-http」为 HTTP；
+引「包:http」为 HTTP；
 
 定 请求 为 HTTP.解析请求头（
     「GET /articles?page=1 HTTP/1.1\r\nHost: localhost\r\nCookie: theme=dark」
@@ -72,7 +70,7 @@ Cookie 默认`Path=/`、`HttpOnly`、`SameSite=Lax`。生产 HTTPS 会话还应�
 ## 5. 单次 TCP 服务器
 
 ```yanxu
-引「包:yanxu-http」为 HTTP；
+引「包:http」为 HTTP；
 引「标准:套接字」为 套接字；
 
 定 监听器：套接字 为 套接字.TCP监听（「127.0.0.1:8080」）；

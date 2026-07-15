@@ -20,21 +20,18 @@
 
 ## 快速开始
 
-使用官方包管理器[言包](https://github.com/yanxulang/yanbao)添加并锁定 Git 依赖：
+使用官方包管理器[言包](https://github.com/yanxulang/yanbao)添加并锁定依赖：
 
 ```sh
-yanbao add yanxu-http --manifest-path . \
-  --git https://github.com/yanxulang/yanxu-http.git \
-  --rev main --version '^0.1'
-yanbao install --manifest-path .
+yanbao add http --version '^0.1'
 ```
 
-`言序.lock`固定精确提交和内容校验；项目不需要维护 submodule。
+`http`会自动解析为 GitHub 上的`yanxulang/yanxu-http`。`言序.lock`固定精确提交和内容校验；项目不需要维护 submodule。
 
 解析一条请求：
 
 ```yanxu
-引「包:yanxu-http」为 HTTP；
+引「包:http」为 HTTP；
 引「标准:字节」为 字节；
 
 定 请求 为 HTTP.解析请求（
