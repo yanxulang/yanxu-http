@@ -1,0 +1,156 @@
+引「../src/言序HTTP.yx」为 HTTP；
+
+引「标准:测试」为 测试；
+
+引「标准:字节」为 字节；
+
+法 空正文（首部：文） 则
+    归 HTTP.解析请求（首部，字节.从文字（「」））；
+终
+
+法 期待错误（任务：法，代码：文）：空 则
+    令 已失败：理 为 假；
+    试 则
+        任务（）；
+    救 所误 则
+        测试.相等（HTTP.错误详情（所误）【「代码」】，代码）；
+        置 已失败 为 真；
+    终
+    测试.断言（已失败，「非法 WebSocket 握手必须按稳定错误分支拒绝」）；
+    归 空；
+终
+
+定 请求 为 空正文（「GET /chat HTTP/1.1\nHost: server.example.com\nUpgrade: websocket\nConnection: keep-alive, Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13\nSec-WebSocket-Protocol: superchat, chat\nOrigin: https://example.com\nSec-WebSocket-Extensions: permessage-deflate」）；
+
+定 握手 为 请求.WebSocket握手（）；
+
+测试.相等（握手.密钥，「dGhlIHNhbXBsZSBub25jZQ==」）；
+
+测试.相等（握手.接受值，「s3pPLMBiTxaQ9kYGzzhZRbK+xOo=」）；
+
+测试.相等（握手.协议列（）【0】，「superchat」）；
+
+测试.相等（握手.协议列（）【1】，「chat」）；
+
+测试.相等（握手.提供协议（「chat」），真）；
+
+测试.相等（握手.提供协议（「CHAT」），假）；
+
+测试.相等（握手.选择协议（【「chat」，「superchat」】），「chat」）；
+
+测试.相等（握手.选择协议（【「other」】），空）；
+
+测试.相等（握手.来源，「https://example.com」）；
+
+测试.相等（握手.来源允许（【「https://example.com」】），真）；
+
+测试.相等（握手.扩展原文，「permessage-deflate」）；
+
+握手.要求来源（【「https://example.com」】）；
+
+定 响应 为 握手.响应协议（「chat」）；
+
+测试.相等（响应.首部值（「Upgrade」），「websocket」）；
+
+测试.相等（响应.首部值（「Connection」），「Upgrade」）；
+
+测试.相等（响应.首部值（「Sec-WebSocket-Accept」），「s3pPLMBiTxaQ9kYGzzhZRbK+xOo=」）；
+
+测试.相等（响应.首部值（「Sec-WebSocket-Protocol」），「chat」）；
+
+测试.相等（字节.转文字（响应.编码（）），「HTTP/1.1 101 Switching Protocols\nupgrade: websocket\nconnection: Upgrade\nsec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\nsec-websocket-protocol: chat\n\n」）；
+
+法 未提供协议（）：空 则
+    握手.响应协议（「missing」）；
+    归 空；
+终
+
+期待错误（未提供协议，「YANXUN_WEBSOCKET_PROTOCOL_NOT_OFFERED」）；
+
+法 来源未允许（）：空 则
+    握手.要求来源（【「https://other.example」】）；
+    归 空；
+终
+
+期待错误（来源未允许，「YANXUN_WEBSOCKET_ORIGIN」）；
+
+法 普通响应编码101（）：空 则
+    HTTP.HTTP响应（101，字节.从文字（「」））.编码（）；
+    归 空；
+终
+
+期待错误（普通响应编码101，「YANXUN_UPGRADE_REQUIRED」）；
+
+测试.相等（HTTP.WebSocket版本响应（）.状态码，426）；
+
+测试.相等（HTTP.WebSocket版本响应（）.首部值（「Sec-WebSocket-Version」），「13」）；
+
+法 非GET（）：空 则
+    空正文（「POST /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（非GET，「YANXUN_WEBSOCKET_METHOD」）；
+
+法 缺连接升级（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（缺连接升级，「YANXUN_WEBSOCKET_CONNECTION」）；
+
+法 连接关闭（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nConnection: Upgrade, close\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（连接关闭，「YANXUN_WEBSOCKET_CONNECTION_CLOSE」）；
+
+法 多升级协议（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket, h2c\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（多升级协议，「YANXUN_WEBSOCKET_UPGRADE」）；
+
+法 密钥填充位（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZR==\nSec-WebSocket-Version: 13」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（密钥填充位，「YANXUN_WEBSOCKET_KEY」）；
+
+法 重复密钥（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（重复密钥，「YANXUN_WEBSOCKET_KEY」）；
+
+法 旧版本（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 12」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（旧版本，「YANXUN_WEBSOCKET_VERSION」）；
+
+法 声明正文（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13\nContent-Length: 0」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（声明正文，「YANXUN_WEBSOCKET_BODY」）；
+
+法 重复子协议（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13\nSec-WebSocket-Protocol: chat, chat」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（重复子协议，「YANXUN_WEBSOCKET_PROTOCOL」）；
+
+法 重复来源（）：空 则
+    空正文（「GET /chat HTTP/1.1\nHost: localhost\nUpgrade: websocket\nConnection: Upgrade\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\nSec-WebSocket-Version: 13\nOrigin: https://one.example\nOrigin: https://two.example」）.WebSocket握手（）；
+    归 空；
+终
+
+期待错误（重复来源，「YANXUN_WEBSOCKET_ORIGIN」）；

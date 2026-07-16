@@ -12,6 +12,7 @@ from pathlib import Path
 
 
 SUCCESS_MARKER = "言讯持久连接通过"
+UPGRADE_MARKER = "言讯升级通过"
 PIPELINED_REQUEST = (
     b"POST /one?q=1 HTTP/1.1\r\n"
     b"Host: localhost\r\n"
@@ -47,6 +48,27 @@ EXPECTED_RESPONSE = (
     b"1\r\no\r\n"
     b"0\r\n\r\n"
 )
+WEBSOCKET_PREFIX = bytes((129, 128, 1, 2, 3, 4))
+WEBSOCKET_REQUEST = (
+    b"GET /socket HTTP/1.1\r\n"
+    b"Host: localhost\r\n"
+    b"Upgrade: websocket\r\n"
+    b"Connection: Upgrade\r\n"
+    b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+    b"Sec-WebSocket-Version: 13\r\n"
+    b"Sec-WebSocket-Protocol: chat\r\n"
+    b"\r\n"
+    + WEBSOCKET_PREFIX
+)
+EXPECTED_WEBSOCKET_RESPONSE = (
+    b"HTTP/1.1 101 Switching Protocols\r\n"
+    b"upgrade: websocket\r\n"
+    b"connection: Upgrade\r\n"
+    b"sec-websocket-accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n"
+    b"sec-websocket-protocol: chat\r\n"
+    b"\r\n"
+    + WEBSOCKET_PREFIX
+)
 
 
 def reserve_loopback_address() -> tuple[str, int]:
@@ -77,7 +99,7 @@ def connect_when_ready(process: subprocess.Popen[str], port: int) -> socket.sock
     raise RuntimeError(f"fixture did not listen within five seconds: {last_error}")
 
 
-def run_fixture(yanxu: Path, backend: str) -> None:
+def run_persistent_fixture(yanxu: Path, backend: str) -> None:
     repository = Path(__file__).resolve().parents[1]
     fixture = repository / "integration" / "持久连接服务器.yx"
     _, port = reserve_loopback_address()
@@ -126,12 +148,62 @@ def run_fixture(yanxu: Path, backend: str) -> None:
         )
 
 
+def run_websocket_fixture(yanxu: Path, backend: str) -> None:
+    repository = Path(__file__).resolve().parents[1]
+    fixture = repository / "integration" / "WebSocket升级服务器.yx"
+    _, port = reserve_loopback_address()
+    address = f"127.0.0.1:{port}"
+    command = [str(yanxu)]
+    if backend == "vm":
+        command.append("字节")
+    command.extend([str(fixture), "--", address])
+
+    process = subprocess.Popen(
+        command,
+        cwd=repository,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        with connect_when_ready(process, port) as client:
+            client.sendall(WEBSOCKET_REQUEST)
+            response = bytearray()
+            while received := client.recv(4096):
+                response.extend(received)
+        stdout, stderr = process.communicate(timeout=5)
+    except Exception:
+        process.kill()
+        stdout, stderr = process.communicate()
+        if stdout:
+            print(stdout, file=sys.stderr, end="")
+        if stderr:
+            print(stderr, file=sys.stderr, end="")
+        raise
+
+    if process.returncode != 0:
+        raise RuntimeError(
+            f"upgrade fixture exited with {process.returncode}\n"
+            f"stdout:\n{stdout}\nstderr:\n{stderr}"
+        )
+    if bytes(response) != EXPECTED_WEBSOCKET_RESPONSE:
+        raise RuntimeError(
+            f"unexpected WebSocket response: {bytes(response)!r}; "
+            f"expected: {EXPECTED_WEBSOCKET_RESPONSE!r}"
+        )
+    if stdout.strip() != UPGRADE_MARKER:
+        raise RuntimeError(
+            f"unexpected upgrade fixture output: {stdout!r}; stderr: {stderr!r}"
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--yanxu", type=Path, required=True)
     parser.add_argument("--backend", choices=("tree", "vm"), required=True)
     arguments = parser.parse_args()
-    run_fixture(arguments.yanxu.resolve(), arguments.backend)
+    run_persistent_fixture(arguments.yanxu.resolve(), arguments.backend)
+    run_websocket_fixture(arguments.yanxu.resolve(), arguments.backend)
     print(f"{SUCCESS_MARKER}（{arguments.backend}）")
     return 0
 
