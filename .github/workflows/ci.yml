@@ -20,15 +20,15 @@ jobs:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: YanXuLang/yanxu
-          path: .yanxu-current
+          path: .yanxu/toolchain
           ref: v1.1.8
       - name: 构建当前稳定言序
-        run: cargo build --manifest-path .yanxu-current/Cargo.toml --locked --bin yanxu
+        run: cargo build --manifest-path .yanxu/toolchain/Cargo.toml --locked --bin yanxu
       - name: 清单、权限与文档结构
         shell: sh
         run: |
           set -eu
-          yanxu="$GITHUB_WORKSPACE/.yanxu-current/target/debug/yanxu"
+          yanxu="$GITHUB_WORKSPACE/.yanxu/toolchain/target/debug/yanxu"
           "$yanxu" 包 .
           for file in README.md LICENSE CHANGELOG.md COMPATIBILITY.md SECURITY.md CONTRIBUTING.md docs/API.md docs/GUIDE.md docs/ARCHITECTURE.md docs/ERRORS.md docs/MIGRATION_1.0.md docs/PERFORMANCE.md docs/SECURITY_MODEL.md docs/RELEASE_NOTES_1.0.0.md; do test -s "$file"; done
           test "$(find tests -type f -name '*.yx' | wc -l)" -eq 9
@@ -50,7 +50,7 @@ jobs:
         shell: sh
         run: |
           set -eu
-          yanxu="$GITHUB_WORKSPACE/.yanxu-current/target/debug/yanxu"
+          yanxu="$GITHUB_WORKSPACE/.yanxu/toolchain/target/debug/yanxu"
           find src tests examples benchmarks integration -type f -name '*.yx' -print | while IFS= read -r file; do
             "$yanxu" 格 "$file" | cmp - "$file"
             "$yanxu" 查 "$file"
@@ -61,7 +61,7 @@ jobs:
         shell: sh
         run: |
           set -eu
-          yanxu="$GITHUB_WORKSPACE/.yanxu-current/target/debug/yanxu"
+          yanxu="$GITHUB_WORKSPACE/.yanxu/toolchain/target/debug/yanxu"
           export YANXU_CACHE="$RUNNER_TEMP/yanxu-cache"
           "$yanxu" 试 tests --json > "$RUNNER_TEMP/spec.json"
           jq -e '.summary.failed == 0 and .summary.passed == 9' "$RUNNER_TEMP/spec.json"
