@@ -1,0 +1,171 @@
+引「../src/言序HTTP.yx」为 HTTP；
+
+引「标准:测试」为 测试；
+
+引「标准:字节」为 字节；
+
+法 重复文（片：文，次数：数）：文 则
+    令 结果：文 为 「」；
+    令 次：数 为 0；
+    当 （次 小于 次数） 则
+        置 结果 为 （结果 加 片）；
+        置 次 为 （次 加 1）；
+    终
+    归 结果；
+终
+
+法 期待错误（任务：法，代码：文）：空 则
+    令 已失败：理 为 假；
+    试 则
+        任务（）；
+    救 所误 则
+        测试.相等（HTTP.错误详情（所误）【「代码」】，代码）；
+        置 已失败 为 真；
+    终
+    测试.断言（已失败，「非法 Cookie 必须按稳定错误分支拒绝」）；
+    归 空；
+终
+
+定 请求 为 HTTP.解析请求（「GET / HTTP/1.1\nHost: localhost\nCookie: sid=first; theme=dark\nCookie: sid=second」，字节.从文字（「」））；
+
+测试.相等（请求.Cookie值（「sid」），「first」）；
+
+定 会话值：列 为 请求.Cookie全部（「sid」）；
+
+测试.相等（长度（会话值），2）；
+
+测试.相等（会话值【0】，「first」）；
+
+测试.相等（会话值【1】，「second」）；
+
+定 各项：列 为 请求.Cookie项列（）；
+
+测试.相等（长度（各项），3）；
+
+测试.相等（各项【1】.名称，「theme」）；
+
+测试.相等（各项【1】.值，「dark」）；
+
+法 缺少等号（）：空 则
+    HTTP.解析Cookie（「sid」）；
+    归 空；
+终
+
+期待错误（缺少等号，「YANXUN_COOKIE_PAIR」）；
+
+法 名称空白（）：空 则
+    HTTP.解析Cookie（「sid =value」）；
+    归 空；
+终
+
+期待错误（名称空白，「YANXUN_COOKIE_NAME」）；
+
+法 歧义逗号（）：空 则
+    HTTP.解析Cookie（「a=one, b=two」）；
+    归 空；
+终
+
+期待错误（歧义逗号，「YANXUN_COOKIE_VALUE」）；
+
+法 名称过长（）：空 则
+    HTTP.解析Cookie（（重复文（「a」，257） 加 「=x」））；
+    归 空；
+终
+
+期待错误（名称过长，「YANXUN_LIMIT_COOKIE_NAME_BYTES」）；
+
+法 值过长（）：空 则
+    HTTP.解析Cookie（（「a=」 加 重复文（「x」，4097）））；
+    归 空；
+终
+
+期待错误（值过长，「YANXUN_LIMIT_COOKIE_VALUE_BYTES」）；
+
+定 安全Cookie 为 HTTP.Cookie（「sid」，「abc123」）.设域名（「.Example.COM」）.设最大秒（60）.设安全（真）.设同站（「strict」）.设分区（真）；
+
+测试.相等（安全Cookie.域名，「example.com」）；
+
+测试.相等（安全Cookie.渲染（），「sid=abc123; Path=/; Domain=example.com; Max-Age=60; Secure; HttpOnly; SameSite=Strict; Partitioned」）；
+
+测试.相等（HTTP.Cookie（「gone」，「」）.删除（）.渲染（），「gone=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax」）；
+
+测试.相等（HTTP.Cookie（「__Host-session」，「v」）.设安全（真）.渲染（），「__Host-session=v; Path=/; Secure; HttpOnly; SameSite=Lax」）；
+
+法 相对路径（）：空 则
+    HTTP.Cookie（「a」，「b」）.设路径（「relative」）；
+    归 空；
+终
+
+期待错误（相对路径，「YANXUN_COOKIE_PATH」）；
+
+法 非ASCII路径（）：空 则
+    HTTP.Cookie（「a」，「b」）.设路径（「/言序」）；
+    归 空；
+终
+
+期待错误（非ASCII路径，「YANXUN_COOKIE_PATH」）；
+
+法 非法域名（）：空 则
+    HTTP.Cookie（「a」，「b」）.设域名（「bad_domain.example」）；
+    归 空；
+终
+
+期待错误（非法域名，「YANXUN_COOKIE_DOMAIN」）；
+
+法 IP域名（）：空 则
+    HTTP.Cookie（「a」，「b」）.设域名（「127.0.0.1」）；
+    归 空；
+终
+
+期待错误（IP域名，「YANXUN_COOKIE_DOMAIN_IP」）；
+
+法 小数寿命（）：空 则
+    HTTP.Cookie（「a」，「b」）.设最大秒（1.5）；
+    归 空；
+终
+
+期待错误（小数寿命，「YANXUN_COOKIE_MAX_AGE」）；
+
+法 寿命过大（）：空 则
+    HTTP.Cookie（「a」，「b」）.设最大秒（2147483648）；
+    归 空；
+终
+
+期待错误（寿命过大，「YANXUN_LIMIT_COOKIE_MAX_AGE」）；
+
+法 None不安全（）：空 则
+    HTTP.Cookie（「a」，「b」）.设同站（「None」）.渲染（）；
+    归 空；
+终
+
+期待错误（None不安全，「YANXUN_COOKIE_SAME_SITE_SECURE」）；
+
+法 分区不安全（）：空 则
+    HTTP.Cookie（「a」，「b」）.设分区（真）.渲染（）；
+    归 空；
+终
+
+期待错误（分区不安全，「YANXUN_COOKIE_PARTITIONED_SECURE」）；
+
+法 安全前缀不安全（）：空 则
+    HTTP.Cookie（「__Secure-session」，「b」）.渲染（）；
+    归 空；
+终
+
+期待错误（安全前缀不安全，「YANXUN_COOKIE_PREFIX_SECURE」）；
+
+法 主机前缀带域名（）：空 则
+    HTTP.Cookie（「__Host-session」，「b」）.设安全（真）.设域名（「example.com」）.渲染（）；
+    归 空；
+终
+
+期待错误（主机前缀带域名，「YANXUN_COOKIE_PREFIX_HOST」）；
+
+法 绕过设置器（）：空 则
+    定 所Cookie 为 HTTP.Cookie（「a」，「b」）；
+    置 所Cookie.路径 为 「relative」；
+    所Cookie.渲染（）；
+    归 空；
+终
+
+期待错误（绕过设置器，「YANXUN_COOKIE_PATH」）；

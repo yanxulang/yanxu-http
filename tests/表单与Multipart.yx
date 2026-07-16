@@ -1,0 +1,183 @@
+引「../src/言序HTTP.yx」为 HTTP；
+
+引「标准:测试」为 测试；
+
+引「标准:字节」为 字节；
+
+引「标准:JSON」为 JSON；
+
+引「标准:文字」为 文字；
+
+法 整数文（值：数）：文 则
+    归 文字.替换（JSON.序列化（值），「.0」，「」）；
+终
+
+法 请求字节（内容类型：文，正文：字节串） 则
+    定 首部：文 为 （（（「POST /upload HTTP/1.1\nHost: localhost\nContent-Type: 」 加 内容类型） 加 「\nContent-Length: 」） 加 整数文（字节.长度（正文）））；
+    归 HTTP.解析请求（首部，正文）；
+终
+
+法 请求文字（内容类型：文，正文：文） 则
+    归 请求字节（内容类型，字节.从文字（正文））；
+终
+
+法 期待错误（任务：法，代码：文）：空 则
+    令 已失败：理 为 假；
+    试 则
+        任务（）；
+    救 所误 则
+        测试.相等（HTTP.错误详情（所误）【「代码」】，代码）；
+        置 已失败 为 真；
+    终
+    测试.断言（已失败，「非法表单必须按稳定错误分支拒绝」）；
+    归 空；
+终
+
+定 媒体 为 HTTP.解析媒体类型（「Multipart/Form-Data; boundary="abc=123"; charset=UTF-8」）；
+
+测试.相等（媒体.完整类型（），「multipart/form-data」）；
+
+测试.相等（媒体.参数（「BOUNDARY」），「abc=123」）；
+
+测试.相等（媒体.参数（「charset」），「UTF-8」）；
+
+定 表单请求 为 请求文字（「application/x-www-form-urlencoded; charset=UTF-8」，「name=%E8%A8%80%E5%BA%8F&tag=a&tag=b&note=line1%0D%0Aline2&space=a+b」）；
+
+定 表单 为 表单请求.表单（）；
+
+测试.相等（表单【「name」】【0】，「言序」）；
+
+测试.相等（长度（表单【「tag」】），2）；
+
+测试.相等（表单【「tag」】【1】，「b」）；
+
+测试.相等（表单【「note」】【0】，「line1\nline2」）；
+
+测试.相等（表单【「space」】【0】，「a b」）；
+
+法 非UTF8表单（）：空 则
+    请求文字（「application/x-www-form-urlencoded; charset=gbk」，「a=b」）.表单（）；
+    归 空；
+终
+
+期待错误（非UTF8表单，「YANXUN_FORM_CHARSET」）；
+
+法 含NUL表单（）：空 则
+    请求文字（「application/x-www-form-urlencoded」，「a=%00」）.表单（）；
+    归 空；
+终
+
+期待错误（含NUL表单，「YANXUN_FORM_NUL」）；
+
+法 超量表单（）：空 则
+    请求文字（「application/x-www-form-urlencoded」，「a=1&b=2」）.表单为（HTTP.限制（）.设Multipart（1））；
+    归 空；
+终
+
+期待错误（超量表单，「YANXUN_LIMIT_FORM_COUNT」）；
+
+定 Multipart前缀：文 为 「--AaB03x\nContent-Disposition: form-data; name="title"\n\n言序\n--AaB03x\nContent-Disposition: form-data; name="tag"\n\none\n--AaB03x\nContent-Disposition: form-data; name="tag"\n\ntwo\n--AaB03x\nContent-Disposition: form-data; name="upload"; filename="C:\\\\fakepath\\\\a.bin"\nContent-Type: application/octet-stream\nX-Meta: yes\n\n」；
+
+定 文件数据：字节串 为 字节.从数列（【0，255，13，10，45，45，65，97，66，48，51，120，45，45，88】）；
+
+定 Multipart正文：字节串 为 字节.拼接（字节.从文字（Multipart前缀），字节.拼接（文件数据，字节.从文字（「\n--AaB03x--\n」）））；
+
+定 多部请求 为 请求字节（「multipart/form-data; boundary="AaB03x"」，Multipart正文）；
+
+定 多部 为 多部请求.多部表单（）；
+
+测试.相等（多部.项数（），4）；
+
+测试.相等（多部.字段值（「title」），「言序」）；
+
+测试.相等（长度（多部.字段全部（「tag」）），2）；
+
+测试.相等（多部.字段全部（「tag」）【1】，「two」）；
+
+测试.相等（多部.字段快照（）【「tag」】【0】，「one」）；
+
+定 各文件：列 为 多部.文件列（「upload」）；
+
+测试.相等（长度（各文件），1）；
+
+定 文件 为 各文件【0】；
+
+测试.相等（文件.文件名，「C:\\fakepath\\a.bin」）；
+
+测试.相等（文件.安全文件名（），「a.bin」）；
+
+测试.相等（文件.内容类型，「application/octet-stream」）；
+
+测试.相等（文件.首部（「X-Meta」），「yes」）；
+
+测试.相等（文件.数据，文件数据）；
+
+测试.相等（文件.大小（），15）；
+
+法 文件不是文字（）：空 则
+    文件.文字（）；
+    归 空；
+终
+
+期待错误（文件不是文字，「YANXUN_MULTIPART_FIELD_ENCODING」）；
+
+定 保留文件名项 为 HTTP.HTTPMultipart项（「upload」，「CON.txt」，空，{}，字节.从文字（「x」））；
+
+测试.相等（保留文件名项.安全文件名（），空）；
+
+法 非UTF8项字符集（）：空 则
+    HTTP.HTTPMultipart项（「field」，空，「text/plain; charset=gbk」，{}，字节.从文字（「x」））.文字（）；
+    归 空；
+终
+
+期待错误（非UTF8项字符集，「YANXUN_MULTIPART_CHARSET」）；
+
+法 Multipart超量（）：空 则
+    多部请求.Multipart为（HTTP.限制（）.设Multipart（3））；
+    归 空；
+终
+
+期待错误（Multipart超量，「YANXUN_LIMIT_MULTIPART_COUNT」）；
+
+法 Multipart有附录（）：空 则
+    定 坏正文：字节串 为 字节.拼接（Multipart正文，字节.从文字（「extra」））；
+    请求字节（「multipart/form-data; boundary=AaB03x」，坏正文）.Multipart（）；
+    归 空；
+终
+
+期待错误（Multipart有附录，「YANXUN_MULTIPART_EPILOGUE」）；
+
+法 Multipart缺结束（）：空 则
+    请求文字（「multipart/form-data; boundary=AaB03x」，「--AaB03x\nContent-Disposition: form-data; name="x"\n\ny」）.Multipart（）；
+    归 空；
+终
+
+期待错误（Multipart缺结束，「YANXUN_EOF_MULTIPART_BOUNDARY」）；
+
+法 Multipart缺名称（）：空 则
+    请求文字（「multipart/form-data; boundary=b」，「--b\nContent-Disposition: form-data\n\nx\n--b--\n」）.Multipart（）；
+    归 空；
+终
+
+期待错误（Multipart缺名称，「YANXUN_MULTIPART_NAME」）；
+
+法 Multipart扩展文件名（）：空 则
+    请求文字（「multipart/form-data; boundary=b」，「--b\nContent-Disposition: form-data; name="f"; filename*=UTF-8''a.txt\n\nx\n--b--\n」）.Multipart（）；
+    归 空；
+终
+
+期待错误（Multipart扩展文件名，「YANXUN_MULTIPART_FILENAME_EXTENDED」）；
+
+法 重复边界参数（）：空 则
+    HTTP.解析媒体类型（「multipart/form-data; boundary=a; boundary=b」）；
+    归 空；
+终
+
+期待错误（重复边界参数，「YANXUN_MEDIA_TYPE」）；
+
+法 过长边界（）：空 则
+    请求文字（「multipart/form-data; boundary=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa」，「」）.Multipart（）；
+    归 空；
+终
+
+期待错误（过长边界，「YANXUN_MULTIPART_BOUNDARY」）；
