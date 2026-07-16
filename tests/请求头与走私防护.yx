@@ -1,0 +1,122 @@
+引「../src/言序HTTP.yx」为 HTTP；
+
+引「标准:测试」为 测试；
+
+引「标准:字节」为 字节；
+
+法 期待首部失败（原文：文，代码：文）：空 则
+    令 已失败：理 为 假；
+    试 则
+        HTTP.解析请求头（原文）；
+    救 所误 则
+        测试.相等（HTTP.错误详情（所误）【「代码」】，代码）；
+        置 已失败 为 真；
+    终
+    测试.断言（已失败，「请求首部必须按稳定错误分支拒绝」）；
+    归 空；
+终
+
+定 请求 为 HTTP.解析请求（「POST /items?q=one&q=two HTTP/1.1\nHost: localhost:8080\nContent-Length: 3\nX-Trace: one\nX-Trace: two\nCookie: sid=first; theme=dark\nCookie: sid=second」，字节.从文字（「abc」））；
+
+测试.相等（请求.正文模式（），「定长」）；
+
+测试.断言（请求.保持连接（），「HTTP/1.1 默认持久连接」）；
+
+测试.断言（非 请求.必须关闭（），「无 close 词时连接可复用」）；
+
+测试.相等（请求.首部值（「x-trace」），「one, two」）；
+
+测试.相等（长度（请求.首部全部（「X-Trace」）），2）；
+
+测试.相等（请求.查询全部（「q」）【1】，「two」）；
+
+测试.相等（请求.Cookie值（「sid」），「first」）；
+
+测试.相等（请求.路由视图（）【「正文模式」】，「定长」）；
+
+定 首部副本：列 为 请求.首部全部（「x-trace」）；
+
+追加（首部副本，「污染」）；
+
+测试.相等（长度（请求.首部全部（「x-trace」）），2）；
+
+定 查询副本：列 为 请求.查询全部（「q」）；
+
+追加（查询副本，「污染」）；
+
+测试.相等（长度（请求.查询全部（「q」）），2）；
+
+定 关闭请求 为 HTTP.解析请求头（「GET / HTTP/1.1\nHost: localhost\nConnection: keep-alive, close」）；
+
+测试.断言（非 关闭请求.保持连接（），「close 词优先关闭连接」）；
+
+测试.断言（关闭请求.必须关闭（），「关闭请求必须显式标记」）；
+
+定 分块请求 为 HTTP.解析请求头（「POST /stream HTTP/1.1\nHost: localhost\nTransfer-Encoding: Chunked\nTrailer: Digest」）；
+
+测试.相等（分块请求.正文模式（），「分块」）；
+
+测试.相等（分块请求.内容长度，0）；
+
+令 已拒绝未解码分块：理 为 假；
+
+试 则
+    HTTP.解析请求（「POST /stream HTTP/1.1\nHost: localhost\nTransfer-Encoding: chunked」，字节.从文字（「0\n\n」））；
+救 所误 则
+    测试.相等（HTTP.错误详情（所误）【「代码」】，「YANXUN_BODY_MODE」）；
+    置 已拒绝未解码分块 为 真；
+终
+
+测试.断言（已拒绝未解码分块，「分块正文必须经过专用解码入口」）；
+
+定 星号请求 为 HTTP.解析请求头（「OPTIONS * HTTP/1.1\nHost: localhost」）；
+
+测试.相等（星号请求.路径，「*」）；
+
+期待首部失败（「GET  / HTTP/1.1\nHost: localhost」，「YANXUN_REQUEST_LINE」）；
+
+期待首部失败（「GET / HTTP/1.1\nHost: localhost」，「YANXUN_LINE_ENDING」）；
+
+期待首部失败（「GET / HTTP/1.1\nHost: one\nHost: two」，「YANXUN_HEADER_DUPLICATE」）；
+
+期待首部失败（「POST / HTTP/1.1\nHost: localhost\nContent-Length: 1\nContent-Length: 1」，「YANXUN_HEADER_DUPLICATE」）；
+
+期待首部失败（「POST / HTTP/1.1\nHost: localhost\nContent-Length: 4\nTransfer-Encoding: chunked」，「YANXUN_FRAMING_CONFLICT」）；
+
+期待首部失败（「POST / HTTP/1.1\nHost: localhost\nTransfer-Encoding: gzip, chunked」，「YANXUN_TRANSFER_ENCODING」）；
+
+期待首部失败（「POST / HTTP/1.1\nHost: localhost\nTransfer-Encoding: chunked, chunked」，「YANXUN_TRANSFER_ENCODING」）；
+
+期待首部失败（「GET / HTTP/1.1\nHost: user@localhost」，「YANXUN_HOST」）；
+
+期待首部失败（「GET /safe%2fadmin HTTP/1.1\nHost: localhost」，「YANXUN_TARGET_SEPARATOR」）；
+
+期待首部失败（「GET * HTTP/1.1\nHost: localhost」，「YANXUN_TARGET_ASTERISK」）；
+
+期待首部失败（「POST / HTTP/1.1\nHost: localhost\nTrailer: Digest」，「YANXUN_TRAILER_MODE」）；
+
+定 小限制 为 HTTP.限制（）.设读取（1000，32，128，2）.设首部项（1，0，0）；
+
+令 已拒绝首部项：理 为 假；
+
+试 则
+    HTTP.解析请求头为（「POST / HTTP/1.1\nHost: localhost\nContent-Length: 1」，小限制）；
+救 所误 则
+    测试.相等（HTTP.错误详情（所误）【「代码」】，「YANXUN_LIMIT_HEADER_COUNT」）；
+    置 已拒绝首部项 为 真；
+终
+
+测试.断言（已拒绝首部项，「自定义首部项预算必须生效」）；
+
+定 正文限制 为 HTTP.限制（）.设读取（1000，8192，65536，2）；
+
+令 已拒绝正文长度：理 为 假；
+
+试 则
+    HTTP.解析请求头为（「POST / HTTP/1.1\nHost: localhost\nContent-Length: 3」，正文限制）；
+救 所误 则
+    测试.相等（HTTP.错误详情（所误）【「代码」】，「YANXUN_LIMIT_BODY_BYTES」）；
+    置 已拒绝正文长度 为 真；
+终
+
+测试.断言（已拒绝正文长度，「自定义正文预算必须生效」）；
