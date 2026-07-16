@@ -1,0 +1,107 @@
+引「../src/言序HTTP.yx」为 HTTP；
+
+引「标准:测试」为 测试；
+
+引「标准:字节」为 字节；
+
+引「标准:文字」为 文字；
+
+引「标准:JSON」为 JSON；
+
+法 含片（原文：文，片：文）：理 则
+    归 （长度（文字.分割（原文，片）） 大于 1）；
+终
+
+法 期待错误（任务：法，代码：文）：空 则
+    令 已失败：理 为 假；
+    试 则
+        任务（）；
+    救 所误 则
+        测试.相等（HTTP.错误详情（所误）【「代码」】，代码）；
+        置 已失败 为 真；
+    终
+    测试.断言（已失败，「无效响应配置必须失败」）；
+    归 空；
+终
+
+定 定长响应 为 HTTP.文字响应（「abc」）；
+
+定 持久定长：文 为 字节.转文字（定长响应.编码为（「GET」，真））；
+
+测试.相等（持久定长，「HTTP/1.1 200 OK\ncontent-type: text/plain; charset=utf-8\ncontent-length: 3\n\nabc」）；
+
+定 旧入口：文 为 字节.转文字（定长响应.编码（））；
+
+测试.断言（含片（旧入口，「connection: close\n」），「兼容编码入口仍应关闭连接」）；
+
+定 HEAD响应：文 为 字节.转文字（定长响应.编码为（「HEAD」，真））；
+
+测试.相等（HEAD响应，「HTTP/1.1 200 OK\ncontent-type: text/plain; charset=utf-8\ncontent-length: 3\n\n」）；
+
+定 分块响应 为 HTTP.文字响应（「abcde」）.设分块（2）；
+
+定 分块文：文 为 字节.转文字（分块响应.编码为（「GET」，真））；
+
+测试.相等（分块文，「HTTP/1.1 200 OK\ncontent-type: text/plain; charset=utf-8\ntransfer-encoding: chunked\n\n2\nab\n2\ncd\n1\ne\n0\n\n」）；
+
+定 HEAD分块：文 为 字节.转文字（分块响应.编码为（「HEAD」，真））；
+
+测试.相等（HEAD分块，「HTTP/1.1 200 OK\ncontent-type: text/plain; charset=utf-8\ntransfer-encoding: chunked\n\n」）；
+
+定 强制关闭：文 为 字节.转文字（HTTP.文字响应（「x」）.设分块（1）.设关闭连接（真）.编码为（「GET」，真））；
+
+测试.断言（含片（强制关闭，「transfer-encoding: chunked\nconnection: close\n」），「响应可以主动结束持久连接」）；
+
+测试.相等（字节.转文字（HTTP.HTTP响应（204，字节.从文字（「」））.编码为（「GET」，真）），「HTTP/1.1 204 No Content\n\n」）；
+
+测试.相等（字节.转文字（HTTP.HTTP响应（205，字节.从文字（「」））.编码为（「GET」，真）），「HTTP/1.1 205 Reset Content\ncontent-length: 0\n\n」）；
+
+测试.相等（字节.转文字（HTTP.HTTP响应（304，字节.从文字（「」））.编码为（「GET」，真）），「HTTP/1.1 304 Not Modified\n\n」）；
+
+定 临时响应 为 HTTP.HTTP响应（103，字节.从文字（「」））.设首部（「link」，「</style.css>; rel=preload」）；
+
+测试.相等（字节.转文字（临时响应.编码为（「GET」，假）），「HTTP/1.1 103 Early Hints\nlink: </style.css>; rel=preload\n\n」）；
+
+法 禁止状态正文（）：空 则
+    HTTP.HTTP响应（204，字节.从文字（「bad」））；
+    归 空；
+终
+
+期待错误（禁止状态正文，「YANXUN_RESPONSE_BODY_FORBIDDEN」）；
+
+法 禁止CONNECT正文（）：空 则
+    HTTP.文字响应（「bad」）.编码为（「CONNECT」，真）；
+    归 空；
+终
+
+期待错误（禁止CONNECT正文，「YANXUN_RESPONSE_BODY_FORBIDDEN」）；
+
+法 托管首部（）：空 则
+    HTTP.文字响应（「x」）.设首部（「Transfer-Encoding」，「gzip」）；
+    归 空；
+终
+
+期待错误（托管首部，「YANXUN_RESPONSE_HEADER_MANAGED」）；
+
+法 非法分块（）：空 则
+    HTTP.文字响应（「x」）.设分块（0）；
+    归 空；
+终
+
+期待错误（非法分块，「YANXUN_RESPONSE_CHUNK_SIZE」）；
+
+定 多首部 为 HTTP.HTTP响应（200，字节.从文字（「」））；
+
+令 序号：数 为 0；
+
+当 （序号 小于 128） 则
+    多首部.设首部（（「x-test-」 加 JSON.序列化（序号）），「v」）；
+    置 序号 为 （序号 加 1）；
+终
+
+法 编码多首部（）：空 则
+    多首部.编码为（「GET」，假）；
+    归 空；
+终
+
+期待错误（编码多首部，「YANXUN_LIMIT_RESPONSE_HEADER_COUNT」）；

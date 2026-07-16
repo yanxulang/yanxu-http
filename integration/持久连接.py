@@ -29,6 +29,24 @@ PIPELINED_REQUEST = (
     b"X-Check: ok\r\n"
     b"\r\n"
 )
+EXPECTED_RESPONSE = (
+    b"HTTP/1.1 103 Early Hints\r\n"
+    b"link: </style.css>; rel=preload\r\n"
+    b"\r\n"
+    b"HTTP/1.1 200 OK\r\n"
+    b"content-type: text/plain; charset=utf-8\r\n"
+    b"content-length: 3\r\n"
+    b"\r\n"
+    b"one"
+    b"HTTP/1.1 200 OK\r\n"
+    b"content-type: text/plain; charset=utf-8\r\n"
+    b"transfer-encoding: chunked\r\n"
+    b"connection: close\r\n"
+    b"\r\n"
+    b"2\r\ntw\r\n"
+    b"1\r\no\r\n"
+    b"0\r\n\r\n"
+)
 
 
 def reserve_loopback_address() -> tuple[str, int]:
@@ -79,8 +97,9 @@ def run_fixture(yanxu: Path, backend: str) -> None:
     try:
         with connect_when_ready(process, port) as client:
             client.sendall(PIPELINED_REQUEST)
-            while client.recv(4096):
-                pass
+            response = bytearray()
+            while received := client.recv(4096):
+                response.extend(received)
         stdout, stderr = process.communicate(timeout=5)
     except Exception:
         process.kill()
@@ -95,6 +114,11 @@ def run_fixture(yanxu: Path, backend: str) -> None:
         raise RuntimeError(
             f"fixture exited with {process.returncode}\n"
             f"stdout:\n{stdout}\nstderr:\n{stderr}"
+        )
+    if bytes(response) != EXPECTED_RESPONSE:
+        raise RuntimeError(
+            f"unexpected HTTP response: {bytes(response)!r}; "
+            f"expected: {EXPECTED_RESPONSE!r}"
         )
     if stdout.strip() != SUCCESS_MARKER:
         raise RuntimeError(
